@@ -2,6 +2,10 @@ import pandas as pd
 import numpy as np
 from collections import defaultdict
 from sklearn.metrics import ndcg_score
+import ir_datasets
+from nltk.tokenize import word_tokenize
+import nltk
+from nltk.corpus import stopwords
 
 def recall(found_docs: list, test_list: list, value: int) -> float:
     counter = 0
@@ -234,3 +238,43 @@ def print_columns(df: pd.DataFrame):
     print(f"NDCG_10_std: {df['NDCG_10'].std()}")
     print(f"NDCG_10_max: {df['NDCG_10'].max()}")
     print(f"NDCG_10_min: {df['NDCG_10'].min()}")
+
+def create_tokenized_word_list(dataset: ir_datasets.datasets.base.Dataset) -> list:
+    nltk.download('stopwords')
+    doc_generator = (doc.text for doc in dataset.docs_iter())
+
+    tokenized_texts = []
+
+    for text in doc_generator:
+        tokenized_texts.append(word_tokenize(text.lower()))
+
+    thereshold = 0.5 * len(tokenized_texts)
+    df_dict = defaultdict(int)
+
+    for word_list in tokenized_texts:
+        word_set = set(word_list)
+
+        for word in word_set:
+            df_dict[word] += 1
+
+    custom_stopwords = []
+
+    for word in df_dict.keys():
+        if df_dict[word] >= thereshold:
+            custom_stopwords.append(word)
+
+    stop_words = set(stopwords.words('english'))
+    final_stopwords = stop_words.union(set(custom_stopwords))
+
+    tokenized_texts_with_stop_words = []
+
+    for text in tokenized_texts:
+        tokenized_one_sentence = []
+
+        for word in text:
+            if word not in final_stopwords:
+                tokenized_one_sentence.append(word)
+
+        tokenized_texts_with_stop_words.append(tokenized_one_sentence)
+
+    return tokenized_texts_with_stop_words
