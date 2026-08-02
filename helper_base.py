@@ -95,8 +95,8 @@ def precision_AP(found_docs: list, test_list: list) -> float:
 
     test_set = set(test_list)
 
-    for mytuple in found_docs:
-        if mytuple[1] in test_set:
+    for doc in found_docs:
+        if doc in test_set:
             counter += 1
 
     return counter / len(found_docs)
@@ -113,8 +113,9 @@ def AP(found_docs: list, test_list: list, app_value: int) -> float:
     total = 0
 
     for i in range(1, app_value + 1):
-        precision_k = precision_AP(found_docs_first_app_value_list[:i], test_list)
-        total += precision_k * (found_docs_first_app_value_list[i - 1] in set(test_list))
+        if i <= len(found_docs_first_app_value_list):
+            precision_k = precision_AP(found_docs_first_app_value_list[:i], test_list)
+            total += precision_k * (found_docs_first_app_value_list[i - 1] in set(test_list))
 
     return total / len(test_list)
 
@@ -249,6 +250,46 @@ def create_tokenized_word_list(dataset: ir_datasets.datasets.base.Dataset) -> li
         tokenized_texts.append(word_tokenize(text.lower()))
 
     thereshold = 0.5 * len(tokenized_texts)
+    df_dict = defaultdict(int)
+
+    for word_list in tokenized_texts:
+        word_set = set(word_list)
+
+        for word in word_set:
+            df_dict[word] += 1
+
+    custom_stopwords = []
+
+    for word in df_dict.keys():
+        if df_dict[word] >= thereshold:
+            custom_stopwords.append(word)
+
+    stop_words = set(stopwords.words('english'))
+    final_stopwords = stop_words.union(set(custom_stopwords))
+
+    tokenized_texts_with_stop_words = []
+
+    for text in tokenized_texts:
+        tokenized_one_sentence = []
+
+        for word in text:
+            if word not in final_stopwords:
+                tokenized_one_sentence.append(word)
+
+        tokenized_texts_with_stop_words.append(tokenized_one_sentence)
+
+    return tokenized_texts_with_stop_words
+
+def create_tokenized_word_list_for_query(dataset: ir_datasets.datasets.base.Dataset) -> list:
+    nltk.download('stopwords')
+    doc_generator = (doc.text for doc in dataset.queries_iter())
+
+    tokenized_texts = []
+
+    for text in doc_generator:
+        tokenized_texts.append(word_tokenize(text.lower()))
+
+    thereshold = 0.9 * len(tokenized_texts)
     df_dict = defaultdict(int)
 
     for word_list in tokenized_texts:
